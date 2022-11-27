@@ -3,7 +3,9 @@ mod io {
     pub mod mmap;
 }
 
-mod util;
+mod util {
+    pub mod util;
+}
 
 mod idx {
     pub mod idx;

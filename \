@@ -238,22 +238,22 @@ mod tests {
     
     fn init_path(s: &str) -> PathBuf {
         let mut test_data_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-        test_data_dir.push(s);
+        test_data_dir.push(s)
         test_data_dir
     }
 
     #[test]
     fn test_read_fq() {
-        let fq_path = init_path("resources/test_data/test.fastq");
-        let mut reader = Reader::from_mmapped_file(fq_path.as_path().display().to_string());
+        let fq_path = init_path("resources/test_data");
+        let mut reader = Reader::from_mmapped_file(<PathBuf as AsRef<Path>>::as_ref(&fq_path).);
         assert!(reader.all(|x| x.expect("failed to read record").valid().is_ok()))
     }
 
     #[test]
     #[should_panic]
     fn test_bad_fq() {
-        let fq_path = init_path("resources/test_data/trunc.fastq");
-        let reader = Reader::from_mmapped_file(fq_path.as_path().display().to_string());
+        let fq_path = init_path("resources/trunc.fastq");
+        let reader = Reader::from_mmapped_file(<PathBuf as AsRef<Path>>::as_ref(&fq_path));
         for record in reader {
                match record {
                    Ok(_) => (), 
@@ -261,20 +261,4 @@ mod tests {
                } 
         }
     }
-    
-
-    #[test]
-    fn test_get_fields() { 
-        let fq_path = init_path("resources/test_data/test.fastq");
-        let mut reader = Reader::from_mmapped_file(fq_path.as_path().display().to_string());
-        let record = reader.next().unwrap().expect("bad record!");
-
-        assert!(record.id == "R22092847.1.1".to_string().into_boxed_str());
-        assert!(record.desc == "1 length=37".to_string().into_boxed_str());
-        assert!(record.qual == "F#FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF".to_string().into_boxed_str());
-        assert!(record.seq == "GNTTAAAGCACATAAAGACAAATCGCTCCAGGGCAAA".to_string().into_boxed_str()); 
-    }
-
-    #[test]
-    fn test_fq_errors() {}
 }

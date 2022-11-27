@@ -36,7 +36,7 @@ pub trait Validate {
 
 #[cfg(test)]
 mod tests  {
-    use crate::util;
+    use crate::util::util;
     #[test]
     fn valid_dna() {
         // We only test uppercase because all strings

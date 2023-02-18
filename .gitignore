@@ -1,2 +1,9 @@
 /target
 /Cargo.lock
+/resources/*
+**/*.fai
+**/*.fastq
+**/*.bam
+**/*.fasta
+**/*.fq
+**/*.fa

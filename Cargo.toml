@@ -8,5 +8,13 @@ edition = "2021"
 [dependencies]
 memmap2 = "0.5.7"
 flate2 = "1.0.13"
-itertools = "0.10.5"
+clap = { version = "4.1.6", features = ["derive"] }
+thiserror = "1.0.44"
 fxhash = "0.2.1"
+
+#itertools = "0.10.5"
+#fxhash = "0.2.1"
+#bio = "*"
+
+[profile.release]
+debug = 1

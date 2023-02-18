@@ -1,14 +1,11 @@
-use std::error::Error;
-
 pub static DNA: [char; 5] = ['A','T','G','C','N'];
 
 pub fn is_dna(c: char) -> bool {
-    match c {
-        'A' | 'T' | 'G' | 'C' | 'N' => true,
-        _ => false,
-    }
+    matches!(c, 'A' | 'T' | 'G' | 'C' | 'N')
 }
 
+// TODO accept an arbitrary number of validator functions?
+// is this possible via reflection perhaps
 pub trait Validate {
     fn valid(&self) -> Result<bool, &'static str> {
         let sv = self.seq_valid();

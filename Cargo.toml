@@ -1,20 +1,14 @@
-[package]
-name = "tetanus"
-version = "0.1.0"
-edition = "2021"
+[workspace]
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
-[dependencies]
-memmap2 = "0.5.7"
-flate2 = "1.0.13"
-clap = { version = "4.1.6", features = ["derive"] }
-thiserror = "1.0.44"
-fxhash = "0.2.1"
-
-#itertools = "0.10.5"
-#fxhash = "0.2.1"
-#bio = "*"
+members = [
+  "lyso-common",
+  "lyso-bam",
+  "lyso-fasta",
+  "lyso-fastq",
+  "lyso-cli",
+]
 
 [profile.release]
-debug = 1
+opt-level = 3
+#lto = true
+

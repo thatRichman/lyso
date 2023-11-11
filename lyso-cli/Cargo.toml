@@ -1,0 +1,16 @@
+[package]
+name = "lyso-cli"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "lyso"
+path = "src/main.rs"
+
+[dependencies]
+bgzip = "0.3.1"
+clap = { version = "4.4.7", features = ["derive"] }
+lyso-bam = { version = "0.1.0", path = "../lyso-bam" }
+lyso-common = { version = "0.1.0", path = "../lyso-common" }
+lyso-fasta = { version = "0.1.0", path = "../lyso-fasta" }
+lyso-fastq = { version = "0.1.0", path = "../lyso-fastq" }

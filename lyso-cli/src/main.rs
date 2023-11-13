@@ -10,6 +10,8 @@ use clap::{Parser, Subcommand};
 
 use lyso_bam::reader::BamReader;
 use lyso_fasta::reader::FastaReader;
+use lyso_fasta::FastaError;
+use lyso_fasta::Record;
 use lyso_fastq::index::FastqIndexer;
 
 #[derive(Parser, Debug)]
@@ -59,9 +61,9 @@ fn main() {
     fn test_read_fasta<P: AsRef<Path>>(fpath: P) {
         let mut in_file = File::open(&fpath).expect("unable to open file.");
         let mut buf_in = std::io::BufReader::new(&mut in_file);
-        let fa_reader = FastaReader::new(&mut buf_in);
         let stdout = stdout();
         let mut handle = stdout.lock();
+        let fa_reader = FastaReader::new(&mut buf_in).unwrap();
         for rec in fa_reader {
             if let Err(e) = writeln!(handle, "{}", rec.unwrap()) {
                 match e.kind() {

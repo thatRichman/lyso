@@ -45,7 +45,7 @@ impl<'a> Record {
 
 impl Display for Record {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}\n", self.id)?;
+        write!(f, ">{}\n", self.id)?;
         write!(f, "{}", self.seq)
     }
 }

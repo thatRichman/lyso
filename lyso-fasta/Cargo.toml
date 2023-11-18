@@ -12,6 +12,6 @@ nom = "7.1.3"
 thiserror = "1.0.50"
 
 [[bench]]
-name = "fasta"
+name = "bench-fasta"
 bench = true
 path = "../benches/bench-fasta/bench_fasta.rs"

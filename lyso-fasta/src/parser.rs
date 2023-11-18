@@ -1,6 +1,6 @@
 use nom::{
     bytes::complete::is_not,
-    bytes::streaming::{is_a, tag},
+    bytes::streaming::{is_a, is_not as streaming_is_not, tag},
     combinator::{map, map_res},
     sequence::{pair, preceded, terminated},
     IResult,
@@ -13,7 +13,7 @@ fn start(input: &[u8]) -> IResult<&[u8], &[u8]> {
 
 #[inline]
 fn not_line_ending(input: &[u8]) -> IResult<&[u8], &[u8]> {
-    is_not("\r\n")(input)
+    streaming_is_not("\r\n")(input)
 }
 
 #[inline]

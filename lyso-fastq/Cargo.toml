@@ -8,4 +8,10 @@ edition = "2021"
 [dependencies]
 fxhash = "0.2.1"
 lyso-common = { path = "../lyso-common/" }
+nom = "7.1.3"
 thiserror = "1.0.50"
+
+[[bench]]
+name = "bench-fastq"
+bench = true
+path = "../benches/bench-fastq/bench_fastq.rs"

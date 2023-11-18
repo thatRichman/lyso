@@ -8,11 +8,16 @@ use bgzip;
 
 use clap::{Parser, Subcommand};
 
+use lyso_bam::BamError;
+use lyso_bam::Record as BamRecord;
 use lyso_bam::reader::BamReader;
-use lyso_fasta::reader::FastaReader;
 use lyso_fasta::FastaError;
-use lyso_fasta::Record;
-use lyso_fastq::index::FastqIndexer;
+use lyso_fasta::reader::FastaReader;
+use lyso_fastq::FastqError;
+use lyso_fastq::Record;
+use lyso_fastq::reader::FastqReader;
+
+use std::time::Instant;
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
@@ -34,6 +39,9 @@ enum Commands {
     FaPrint {
         f_path: Option<PathBuf>,
     },
+    FqPrint {
+        f_path: Option<PathBuf>,
+    },
 }
 
 fn main() {
@@ -42,7 +50,7 @@ fn main() {
     match &cli.command {
         Some(Commands::Faidx { f_path }) => {
             if let Some(p) = f_path.as_deref() {
-                index_fastq(p);
+                unimplemented!();
             }
         }
         Some(Commands::View { f_path }) => {
@@ -55,6 +63,11 @@ fn main() {
                 test_read_fasta(p);
             }
         }
+        Some(Commands::FqPrint { f_path }) => {
+            if let Some(p) = f_path.as_deref() {
+                test_read_fastq(p);
+            }
+        }
         None => {}
     }
 
@@ -63,30 +76,52 @@ fn main() {
         let mut buf_in = std::io::BufReader::new(&mut in_file);
         let stdout = stdout();
         let mut handle = stdout.lock();
-        let fa_reader = FastaReader::new(&mut buf_in).unwrap();
-        for rec in fa_reader {
-            if let Err(e) = writeln!(handle, "{}", rec.unwrap()) {
-                match e.kind() {
-                    std::io::ErrorKind::BrokenPipe => exit(141),
-                    _ => panic!("{e}"),
-                }
-            }
-        }
+        let fa_reader = FastaReader::new(&mut buf_in);
+        let now = Instant::now();
+        let reads = fa_reader.collect::<Vec<Result<lyso_fasta::Record, FastaError>>>();
+        eprintln!("Read {} records in {:?}", reads.len(), now.elapsed());
+        // for rec in fa_reader {
+        //     if let Err(e) = writeln!(handle, "{}", rec.unwrap()) {
+        //         match e.kind() {
+        //             std::io::ErrorKind::BrokenPipe => exit(141),
+        //             _ => panic!("{e}"),
+        //         }
+        //     }
+        // }
     }
-
-    fn index_fastq<P: AsRef<Path>>(fpath: P) {
+    
+    fn test_read_fastq<P: AsRef<Path>>(fpath: P) {
         let mut in_file = File::open(&fpath).expect("unable to open file.");
         let mut buf_in = std::io::BufReader::new(&mut in_file);
-        let fq_idxr = FastqIndexer::new(&mut buf_in);
-        let out_f = File::create(&"test.fai").unwrap();
-        let mut buf_out = std::io::BufWriter::new(out_f);
-        let mut idx_str;
-        for idx in fq_idxr {
-            idx_str = format!("{}\n", idx.unwrap());
-            buf_out.write(idx_str.as_bytes()).unwrap();
-        }
-        buf_out.flush().unwrap();
+        let stdout = stdout();
+        let mut handle = stdout.lock();
+        let fa_reader = FastqReader::new(&mut buf_in);
+        let now = Instant::now();
+        let reads = fa_reader.collect::<Vec<Result<Record, FastqError>>>();
+        eprintln!("Read {} records in {:?}", reads.len(), now.elapsed());
+        // for rec in fa_reader {
+        //     if let Err(e) = writeln!(handle, "{}", rec.unwrap()) {
+        //         match e.kind() {
+        //             std::io::ErrorKind::BrokenPipe => exit(141),
+        //             _ => panic!("{e}"),
+        //         }
+        //     }
+        // }
     }
+
+    // fn index_fastq<P: AsRef<Path>>(fpath: P) {
+    //     let mut in_file = File::open(&fpath).expect("unable to open file.");
+    //     let mut buf_in = std::io::BufReader::new(&mut in_file);
+    //     let fq_idxr = FastqIndexer::new(&mut buf_in);
+    //     let out_f = File::create(&"test.fai").unwrap();
+    //     let mut buf_out = std::io::BufWriter::new(out_f);
+    //     let mut idx_str;
+    //     for idx in fq_idxr {
+    //         idx_str = format!("{}\n", idx.unwrap());
+    //         buf_out.write(idx_str.as_bytes()).unwrap();
+    //     }
+    //     buf_out.flush().unwrap();
+    // }
 
     fn view_bam<P: AsRef<Path>>(fpath: P) {
         let in_file = File::open(&fpath).expect("unable to open file.");
@@ -96,14 +131,17 @@ fn main() {
         let bam_reader = BamReader::new(gunzip_in);
         let stdout = stdout();
         let mut handle = stdout.lock();
-        // read alignments
-        for rec in bam_reader.into_iter() {
-            if let Err(e) = writeln!(handle, "{}", rec.unwrap()) {
-                match e.kind() {
-                    std::io::ErrorKind::BrokenPipe => exit(141),
-                    _ => panic!("{e}"),
-                }
-            }
-        }
+        let now = Instant::now();
+        let records = bam_reader.collect::<Vec<Result<BamRecord, BamError>>>();
+        eprintln!("Read {} records in {:?}", records.len(), now.elapsed());
+        //read alignments
+        // for rec in bam_reader.into_iter() {
+        //     if let Err(e) = writeln!(handle, "{}", rec.unwrap()) {
+        //         match e.kind() {
+        //             std::io::ErrorKind::BrokenPipe => exit(141),
+        //             _ => panic!("{e}"),
+        //         }
+        //     }
+        // }
     }
 }

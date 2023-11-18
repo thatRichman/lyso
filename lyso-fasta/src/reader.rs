@@ -4,12 +4,13 @@ use crate::Record;
 use nom::Err::Incomplete;
 use std::io::BufRead;
 
-const MAX_BUFFER_SIZE: usize = 1_000_000;
+const MAX_BUFFER_SIZE: usize = 10_000_000;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum FastaReaderState {
     Reading,
     Complete,
+    Failed,
 }
 
 pub struct FastaReader<T>
@@ -26,27 +27,25 @@ impl<T> FastaReader<T>
 where
     T: BufRead,
 {
-    pub fn new(f: T) -> Result<Self, FastaError> {
-        let mut r = FastaReader {
+    pub fn new(f: T) -> Self {
+        let r = FastaReader {
             state: FastaReaderState::Reading,
             inner: f,
             buffer: Vec::with_capacity(MAX_BUFFER_SIZE),
             offset: 0,
         };
-        // immediately advance to first header
-        r.read_to_next_header()?;
-        Ok(r)
+        r
     }
 
     /// Prevent internal buffer from growing infinitely.
     /// Does not shrink capacity under the assumption that
     /// reads in a fasta tend to be of similar length.
     #[inline]
-    fn maybe_resize_buffer(&mut self) {
-        if self.buffer.len() > MAX_BUFFER_SIZE {
+    fn resize_buffer(&mut self) {
+        {
             self.buffer.drain(0..self.offset);
-            self.offset = 0;
         }
+        self.offset = 0;
     }
 
     #[inline]
@@ -61,7 +60,7 @@ where
 
     #[inline]
     pub fn read_record(&mut self) -> Option<Result<Record, FastaError>> {
-        if self.state == FastaReaderState::Complete {
+        if self.state != FastaReaderState::Reading {
             return None;
         }
         match self.read_to_next_header() {
@@ -86,10 +85,15 @@ where
                     Ok(_) => {}
                     Err(e) => return Some(Err(FastaError::IoError(e))),
                 },
-                Err(_) => return Some(Err(FastaError::ParserError)),
+                Err(_) => {
+                    self.state = FastaReaderState::Failed;
+                    return Some(Err(FastaError::ParserError));
+                }
             }
         }
-        self.maybe_resize_buffer();
+        if self.offset > MAX_BUFFER_SIZE {
+            self.resize_buffer();
+        }
         res
     }
 }
@@ -119,7 +123,7 @@ mod tests {
     fn test_read_fa() {
         let f = File::open(FA_PATH).unwrap();
         let b = BufReader::new(f);
-        let reader: FastaReader<BufReader<File>> = FastaReader::new(b).unwrap();
+        let reader: FastaReader<BufReader<File>> = FastaReader::new(b);
         for r in reader {
             assert!(r.is_ok());
         }
@@ -130,7 +134,7 @@ mod tests {
     fn test_bad_fa_panics() {
         let f = File::open(BAD_FA_PATH).unwrap();
         let b = BufReader::new(f);
-        let reader: FastaReader<BufReader<File>> = FastaReader::new(b).unwrap();
+        let reader: FastaReader<BufReader<File>> = FastaReader::new(b);
         for r in reader {
             eprintln!("{:?}", r);
         }
@@ -140,7 +144,7 @@ mod tests {
     fn test_get_fields() {
         let f = File::open(FA_PATH).unwrap();
         let b = BufReader::new(f);
-        let mut reader: FastaReader<BufReader<File>> = FastaReader::new(b).unwrap();
+        let mut reader: FastaReader<BufReader<File>> = FastaReader::new(b);
         let record = reader.next().unwrap();
         eprintln!("{}", record.as_ref().unwrap().seq);
         assert!(record.as_ref().unwrap().id == "SRR22092847.1.1");

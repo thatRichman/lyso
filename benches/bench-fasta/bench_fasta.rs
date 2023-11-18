@@ -14,7 +14,7 @@ mod benches {
     pub fn bench_read_fa(b: &mut Bencher) {
         let f = File::open("../benches/bench-fasta/med.fa").unwrap();
         let mut reader = BufReader::new(&f);
-        let mut fa_reader = FastaReader::new(reader);
+        let mut fa_reader = FastaReader::new(reader).unwrap();
         b.iter(|| {
             black_box((&mut fa_reader).collect::<Vec<Result<Record, FastaError>>>());
         });

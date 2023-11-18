@@ -226,10 +226,7 @@ impl From<Vec<f32>> for BamAuxValue {
     }
 }
 
-/// Representation of a BAM alignment record
-///
-/// Display implementation will write this record in SAM format.
-/// Use BamWriter to write in BAM format.
+/// A BAM alignment record
 #[derive(Debug, Default)]
 pub struct Record {
     block_size: u32,
@@ -253,16 +250,6 @@ pub struct Record {
 
 impl Display for Record {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let qual_string: String = if self.qual.is_some() {
-            self.qual
-                .as_ref()
-                .unwrap()
-                .iter()
-                .map(|x| x.to_string())
-                .collect()
-        } else {
-            String::from("*")
-        };
         write!(
             f,
             "{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}",
@@ -273,7 +260,7 @@ impl Display for Record {
             self.cigar.iter().map(|x| x.to_string()).collect::<String>(),
             self.tlen,
             self.seq.iter().map(|x| x.to_string()).collect::<String>(),
-            qual_string
+            std::str::from_utf8(self.qual.as_ref().unwrap_or(&vec![42u8; 1])).unwrap_or("*")
         )
         .unwrap();
         if self.aux.is_some() {
@@ -301,4 +288,24 @@ pub struct BamReference {
 pub struct BamHeader {
     text: String,
     n_ref: u32,
+}
+
+#[derive(Clone, Copy, Debug, Default)]
+pub enum PhredEncoding {
+    #[default]
+    Phred33 = 33,
+    Phred64 = 64,
+    Unknown = 0,
+}
+
+pub fn guess_phred_encoding(scores: &[u8]) -> PhredEncoding {
+    let min = scores.iter().min().unwrap_or(&0);
+    let max = scores.iter().max().unwrap_or(&0);
+    if min < &59 && max <= &74 {
+        return PhredEncoding::Phred33;
+    }
+    if min >= &64 && max > &73 {
+        return PhredEncoding::Phred64;
+    }
+    PhredEncoding::Unknown
 }

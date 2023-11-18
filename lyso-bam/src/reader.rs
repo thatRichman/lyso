@@ -16,7 +16,7 @@ pub enum BamReaderState {
     Complete,
 }
 
-/// A semi-streaming BAM Reader
+/// A streaming BAM Reader
 ///
 /// Accepts any source implementing BufRead
 /// Assumes input is uncompressed so must be coupled with a blocked gzip reader for compressed data.
@@ -39,22 +39,14 @@ where
     T: BufRead,
 {
     pub fn new(handle: T) -> Self {
-        let mut reader = BamReader {
+        BamReader {
             inner: handle,
             buffer: Vec::with_capacity(MAX_BLOCK_SIZE),
             offset: 0,
             state: BamReaderState::Header,
             header: None,
             references: Vec::with_capacity(1),
-        };
-        // immediately consume the bam header and references
-        match reader.read_header() {
-            BamReaderState::Reference => {
-                reader.read_references();
-            }
-            _ => {}
         }
-        reader
     }
 
     fn get_slice(&self) -> &[u8] {
@@ -114,42 +106,52 @@ where
     /// Attempt to read a full alignment block into buffer.
     ///
     /// Returns amount read if it is equal to the block_size field.
-    /// If there is no more input to be read from inner reader, returns None, signaling EOF.
-    /// Panics on I/O error, unexpected end of input, or on failure to parse block size.
-    fn read_block(&mut self) -> Option<u64> {
+    /// If there is no more input to be read from inner reader, returns Ok(0), signaling EOF.
+    fn read_block(&mut self) -> Result<u64, BamError> {
         match self.read_to_buffer(4u64) {
             Ok(4u64) => {}
-            Ok(0) => return None,
-            Ok(_) => panic!("Unexpected end of input"),
-            Err(e) => panic!("I/O error: {e}"),
+            Ok(0) => return Ok(0),
+            Ok(_) => return Err(BamError::EofError),
+            Err(e) => return Err(BamError::IoError(e)),
         }
         match parser::block_size(self.get_slice()) {
             Ok((_, bsize)) => match self.read_to_buffer(u64::from(bsize)) {
-                Ok(v) if v == u64::from(bsize) => Some(v),
-                Ok(_) => panic!("Unexpected end of input"),
-                Err(e) => panic!("I/O error: {e}"),
+                Ok(v) if v == u64::from(bsize) => Ok(v),
+                Ok(_) => Err(BamError::EofError),
+                Err(e) => Err(BamError::IoError(e)),
             },
-            Err(e) => panic!("Unable to determine alignment block size: {e}"),
+            Err(_) => Err(BamError::ParseError),
         }
     }
 
     fn read_record(&mut self) -> Option<Result<Record, BamError>> {
-        if self.state == BamReaderState::Complete {
-            return None;
-        }
-        match self.read_block() {
-            None => {
-                self.state = BamReaderState::Complete;
-                return None;
+        match self.state {
+            BamReaderState::Alignment => {
+                match self.read_block() {
+                    Ok(0) => {
+                        self.state = BamReaderState::Complete;
+                        return None;
+                    }
+                    Err(e) => return Some(Err(e)),
+                    _ => {}
+                }
+                match parser::read_alignment(self.get_slice(), &self.references) {
+                    Ok((_, aln)) => {
+                        self.buffer.clear();
+                        Some(Ok(aln))
+                    }
+                    Err(_) => Some(Err(BamError::ParseError)),
+                }
             }
-            _ => {}
-        }
-        match parser::read_alignment(self.get_slice(), &self.references) {
-            Ok((_, aln)) => {
-                self.buffer.clear();
-                Some(Ok(aln))
+            BamReaderState::Complete => None,
+            BamReaderState::Header => {
+                self.read_header();
+                self.read_record()
             }
-            Err(_) => Some(Err(BamError::ParseError))
+            BamReaderState::Reference => {
+                self.read_references();
+                self.read_record()
+            }
         }
     }
 }

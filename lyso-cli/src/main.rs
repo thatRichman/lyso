@@ -1,6 +1,6 @@
 use std::fs::File;
-use std::io::prelude::*;
 use std::io::stdout;
+use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 use std::process::exit;
 
@@ -8,14 +8,14 @@ use bgzip;
 
 use clap::{Parser, Subcommand};
 
+use lyso_bam::reader::BamReader;
 use lyso_bam::BamError;
 use lyso_bam::Record as BamRecord;
-use lyso_bam::reader::BamReader;
-use lyso_fasta::FastaError;
 use lyso_fasta::reader::FastaReader;
+use lyso_fasta::FastaError;
+use lyso_fastq::reader::FastqReader;
 use lyso_fastq::FastqError;
 use lyso_fastq::Record;
-use lyso_fastq::reader::FastqReader;
 
 use std::time::Instant;
 
@@ -89,7 +89,7 @@ fn main() {
         //     }
         // }
     }
-    
+
     fn test_read_fastq<P: AsRef<Path>>(fpath: P) {
         let mut in_file = File::open(&fpath).expect("unable to open file.");
         let mut buf_in = std::io::BufReader::new(&mut in_file);
@@ -131,17 +131,14 @@ fn main() {
         let bam_reader = BamReader::new(gunzip_in);
         let stdout = stdout();
         let mut handle = stdout.lock();
-        let now = Instant::now();
-        let records = bam_reader.collect::<Vec<Result<BamRecord, BamError>>>();
-        eprintln!("Read {} records in {:?}", records.len(), now.elapsed());
         //read alignments
-        // for rec in bam_reader.into_iter() {
-        //     if let Err(e) = writeln!(handle, "{}", rec.unwrap()) {
-        //         match e.kind() {
-        //             std::io::ErrorKind::BrokenPipe => exit(141),
-        //             _ => panic!("{e}"),
-        //         }
-        //     }
-        // }
+        for rec in bam_reader.into_iter() {
+            if let Err(e) = writeln!(handle, "{}", rec.unwrap()) {
+                match e.kind() {
+                    std::io::ErrorKind::BrokenPipe => exit(141),
+                    _ => panic!("{e}"),
+                }
+            }
+        }
     }
 }

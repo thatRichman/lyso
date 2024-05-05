@@ -483,19 +483,30 @@ pub fn read_alignment<'a>(
         None
     };
 
-    maybe_correct_cigar(
-        &mut n_cigar_op,
-        &seq.len(),
-        &mut cigar,
-        aux_hash.as_mut().unwrap(),
-        &references[usize::try_from(ref_id).unwrap()],
-    );
+    let mut ref_name = String::from("*");
+    if ref_id >= 0 {
+        let reference = &references[usize::try_from(ref_id).unwrap()];
+        ref_name = reference.name.clone();
+        maybe_correct_cigar(
+            &mut n_cigar_op,
+            &seq.len(),
+            &mut cigar,
+            aux_hash.as_mut().unwrap(),
+            reference,
+        );
+    }
+
+    let mut next_ref_name = String::from("*");
+    if next_ref_id >= 0 {
+        next_ref_name = references[usize::try_from(ref_id).unwrap()].name.clone();
+    }
 
     Ok((
         i,
         Record {
             block_size,
             ref_id,
+            ref_name,
             pos,
             l_read_name,
             mapq,
@@ -504,6 +515,7 @@ pub fn read_alignment<'a>(
             flag,
             l_seq,
             next_ref_id,
+            next_ref_name,
             next_pos,
             tlen,
             read_name,

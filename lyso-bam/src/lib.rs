@@ -114,16 +114,17 @@ pub enum BamAuxValue {
     Bf(Vec<f32>),
 }
 
+/// All integer types are 'i' in SAM format
 impl Display for BamAuxValue {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             BamAuxValue::A(v) => write!(f, "A:{v}"),
-            BamAuxValue::c(v) => write!(f, "c:{v}"),
-            BamAuxValue::C(v) => write!(f, "C:{v}"),
-            BamAuxValue::s(v) => write!(f, "s:{v}"),
-            BamAuxValue::S(v) => write!(f, "S:{v}"),
+            BamAuxValue::c(v) => write!(f, "i:{v}"),
+            BamAuxValue::C(v) => write!(f, "i:{v}"),
+            BamAuxValue::s(v) => write!(f, "i:{v}"),
+            BamAuxValue::S(v) => write!(f, "i:{v}"),
             BamAuxValue::i(v) => write!(f, "i:{v}"),
-            BamAuxValue::I(v) => write!(f, "I:{v}"),
+            BamAuxValue::I(v) => write!(f, "i:{v}"),
             BamAuxValue::Z(v) => write!(f, "Z:{v}"),
             _ => todo!(),
         }
@@ -231,6 +232,7 @@ impl From<Vec<f32>> for BamAuxValue {
 pub struct Record {
     block_size: u32,
     ref_id: i32,
+    ref_name: String,
     pos: i32,
     l_read_name: u8,
     mapq: u8,
@@ -239,6 +241,7 @@ pub struct Record {
     flag: u16,
     l_seq: u32,
     next_ref_id: i32,
+    next_ref_name: String,
     next_pos: i32,
     tlen: i32,
     read_name: String,
@@ -252,15 +255,27 @@ impl Display for Record {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}",
+            "{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}",
             self.read_name,
             self.flag,
-            self.pos,
+            self.ref_name,
+            self.pos + 1, // SAM is 1-based
             self.mapq,
             self.cigar.iter().map(|x| x.to_string()).collect::<String>(),
+            self.next_ref_name,
+            self.next_pos + 1,
             self.tlen,
             self.seq.iter().map(|x| x.to_string()).collect::<String>(),
-            std::str::from_utf8(self.qual.as_ref().unwrap_or(&vec![42u8; 1])).unwrap_or("*")
+            std::str::from_utf8(
+                self.qual
+                    .as_ref()
+                    .unwrap_or(&vec![42u8; 1])
+                    .iter()
+                    .map(|x| x + 33)
+                    .collect::<Vec<u8>>()
+                    .as_ref()
+            )
+            .unwrap_or("*")
         )
         .unwrap();
         if self.aux.is_some() {
